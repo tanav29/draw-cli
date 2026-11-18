@@ -1,0 +1,28 @@
+{
+  "name": "draw-cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Create, render, and inspect Excalidraw drawings from the command line.",
+  "bin": {
+    "draw": "./cli.mjs"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "postinstall": "npm run build",
+    "setup": "node setup.mjs",
+    "draw": "node cli.mjs",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "dependencies": {
+    "@excalidraw/excalidraw": "0.18.1",
+    "esbuild": "0.28.1",
+    "playwright": "1.65.1",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "yaml": "2.9.1"
+  }
+}

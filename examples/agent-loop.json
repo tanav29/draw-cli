@@ -1,0 +1,49 @@
+{
+  "background": "#fbf9f4",
+  "elements": [
+    {
+      "id": "title", "type": "text", "x": 0, "y": 0,
+      "text": "The agent drawing loop", "fontSize": 36, "strokeColor": "#253532"
+    },
+    {
+      "id": "write", "type": "rectangle", "x": 0, "y": 105, "width": 170, "height": 86,
+      "label": { "text": "Write a spec", "fontSize": 21 },
+      "backgroundColor": "#f8dea0", "fillStyle": "solid", "strokeColor": "#253532",
+      "roundness": { "type": 3 }, "roughness": 1
+    },
+    {
+      "id": "create", "type": "rectangle", "x": 242, "y": 105, "width": 182, "height": 86,
+      "label": { "text": "Create a scene", "fontSize": 21 },
+      "backgroundColor": "#cbe5d7", "fillStyle": "solid", "strokeColor": "#253532",
+      "roundness": { "type": 3 }, "roughness": 1
+    },
+    {
+      "id": "inspect", "type": "rectangle", "x": 496, "y": 105, "width": 184, "height": 86,
+      "label": { "text": "Inspect the result", "fontSize": 21 },
+      "backgroundColor": "#d9def3", "fillStyle": "solid", "strokeColor": "#253532",
+      "roundness": { "type": 3 }, "roughness": 1
+    },
+    {
+      "id": "create-arrow", "type": "arrow", "x": 177, "y": 148,
+      "points": [[0, 0], [56, 0]], "start": { "id": "write" }, "end": { "id": "create" },
+      "strokeColor": "#253532", "roughness": 1
+    },
+    {
+      "id": "inspect-arrow", "type": "arrow", "x": 431, "y": 148,
+      "points": [[0, 0], [56, 0]], "start": { "id": "create" }, "end": { "id": "inspect" },
+      "strokeColor": "#253532", "roughness": 1
+    },
+    {
+      "id": "write-caption", "type": "text", "x": 16, "y": 214,
+      "text": "drawing.json", "fontFamily": 3, "fontSize": 17, "strokeColor": "#4a6259"
+    },
+    {
+      "id": "create-caption", "type": "text", "x": 252, "y": 214,
+      "text": ".excalidraw", "fontFamily": 3, "fontSize": 17, "strokeColor": "#4a6259"
+    },
+    {
+      "id": "inspect-caption", "type": "text", "x": 506, "y": 214,
+      "text": "PNG / SVG / text", "fontFamily": 3, "fontSize": 17, "strokeColor": "#4a6259"
+    }
+  ]
+}
