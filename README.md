@@ -1,15 +1,16 @@
 # Draw CLI
 
-Create drawings from JSON, open them in Excalidraw, and export a PNG or SVG to check how they look. The CLI uses the Excalidraw SDK for drawing and image export. It runs locally with headless Chromium and needs no server or account.
+Create editable Excalidraw drawings from JSON or YAML and export them to SVG or PNG. The TypeScript CLI generates SVG directly in Node.js and loads resvg for PNG export. Both run offline.
 
 ## Setup
 
-Requires Node.js 20.19 or newer. Run these commands from the project directory.
+Requires Node.js 20.19 or newer. From the project directory, run
 
 ```sh
 npm ci
-npm run setup
 ```
+
+`npm ci` compiles the TypeScript sources. For a smaller install that only needs scene creation, inspection, YAML and SVG, use `npm ci --omit=optional` to skip the native PNG binary.
 
 Run the CLI with `node cli.mjs`. To make `draw` available on your PATH, run `npm link` from this directory.
 
@@ -32,7 +33,7 @@ Commands that write files report their output path on stderr. Use `-` for stdin 
 node cli.mjs create - --from drawing.json | node cli.mjs source -
 ```
 
-Use `node cli.mjs --help` for all flags. Run `npm test` after setup to verify the create, inspect, and export workflow.
+Use `node cli.mjs --help` for all flags. Run `npm test` after a full install to verify the create, inspect, and export workflow.
 
 ## YAML and agent skill
 
@@ -72,4 +73,10 @@ A spec has an `elements` array and an optional `background` color. Element order
 - Use native style fields such as `strokeColor`, `backgroundColor`, `strokeWidth`, `strokeStyle`, `fillStyle`, `roughness`, `opacity`, and `angle` (radians).
 - For images, put an Excalidraw binary file record with a data URL under its ID in top-level `files` and set that ID as the image's `fileId`.
 
-See the [complete example spec](examples/agent-loop.json), its [editable scene](examples/agent-loop.excalidraw), and the [rendered PNG](examples/agent-loop.png). The Excalidraw SDK provides more detail on shape, binding, and export options. [Shape API](https://plus.excalidraw.com/docs/sdk/excalidraw/api/excalidraw-element-skeleton) · [Export API](https://plus.excalidraw.com/docs/sdk/excalidraw/api/utils/export)
+See the [complete example spec](examples/agent-loop.json), its [editable scene](examples/agent-loop.excalidraw), and the [rendered PNG](examples/agent-loop.png).
+
+## Export compatibility
+
+The renderer uses Rough.js for sketch strokes and embeds the bundled drawing fonts used by each SVG. Editor exports can differ in line wrapping, stroke geometry, frame titles and font fallback. Linked web embeds render as outlines.
+
+PNG export decodes embedded PNG, JPEG, GIF and SVG images. For scenes containing WebP, AVIF, BMP or ICO assets, export to SVG to retain the original image. PNG output is limited to 16,384 pixels per side and 64 megapixels overall.
