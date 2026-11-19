@@ -1,13 +1,18 @@
 {
   "name": "draw-cli",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
   "description": "Create, render, and inspect Excalidraw drawings from the command line.",
   "bin": {
-    "draw": "./cli.mjs"
+    "draw": "cli.mjs"
   },
-  "files": ["cli.mjs", "dist/src", "fonts", "examples"],
+  "files": [
+    "cli.mjs",
+    "dist/src",
+    "fonts",
+    "examples",
+    ".agents/skills/diagram/SKILL.md"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "prepare": "npm run build",

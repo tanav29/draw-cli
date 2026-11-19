@@ -45,6 +45,18 @@ function singlePixel(png: Buffer) {
   return [...inflateSync(Buffer.concat(chunks)).subarray(1)];
 }
 
+test("print the bundled skill from any working directory", async () => {
+  const cwd = await mkdtemp(join(tmpdir(), "draw-skill-"));
+  try {
+    const skill = await readFile(new URL("../../.agents/skills/diagram/SKILL.md", import.meta.url));
+    assert.deepEqual(success(["skill"], { cwd }), skill);
+    assert.match(success(["--help"]).toString(), /draw skill/);
+    assert.equal(run(["skill", "extra"], { cwd }).status, 1);
+  } finally {
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
 test("render to a unique temporary image or an explicit output", async () => {
   const cwd = await mkdtemp(join(tmpdir(), "draw-cli-"));
   const temporary: string[] = [];

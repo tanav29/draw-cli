@@ -35,6 +35,9 @@ const help = `Usage
   draw yaml-to-json <spec.yaml|-> [-o <spec.json|->] [--force]
   Convert one YAML document to JSON (stdout by default).
 
+  draw skill
+  Print the diagram skill instructions.
+
   draw source <scene.excalidraw|-> [--format <text|json>]
 
 render  Render a spec or saved scene directly to PNG (default) or SVG.
@@ -49,6 +52,7 @@ const force = { type: "boolean" } as const;
 const format = { type: "string" } as const;
 const outputPath = { type: "string", short: "o" } as const;
 const commands = {
+  skill: {},
   init: { force },
   create: { from: { type: "string" }, "from-format": format, force },
   "yaml-to-json": { output: outputPath, force },
@@ -178,6 +182,11 @@ async function main([command, ...args]: string[]) {
   const values = parsed as Flags;
   if (values.help) {
     process.stdout.write(command === "render" ? renderHelp : help);
+    return;
+  }
+  if (command === "skill") {
+    if (positionals.length) throw new Error("draw skill does not accept a path.");
+    process.stdout.write(await readFile(new URL("../../.agents/skills/diagram/SKILL.md", import.meta.url), "utf8"));
     return;
   }
   const [input] = positionals;

@@ -2,6 +2,10 @@
 
 Create editable Excalidraw drawings from YAML or JSON and export them to SVG or PNG. The TypeScript CLI generates SVG directly in Node.js and loads resvg for PNG export. Both run offline.
 
+## Run without installing
+
+Requires Node.js 20.19 or newer. Run `npx draw-cli --help` or `bunx draw-cli --help`. Use `npx draw-cli skill` (or `bunx draw-cli skill`) to print the agent skill instructions. Install globally with `npm install -g draw-cli` to use the `draw` command directly.
+
 ## Setup & build
 
 Requires Node.js 20.19 or newer. From the project directory, run
@@ -58,7 +62,7 @@ bun draw create drawing.excalidraw --from drawing.yaml
 
 `render` and `create` detect `.yaml` and `.yml` files. Stdin defaults to YAML, which also accepts JSON. Use `--from-format json` for strict JSON parsing. The optional `yaml-to-json` command writes JSON to stdout by default.
 
-The project includes a [draw-diagram skill](.agents/skills/draw-diagram/SKILL.md) with a compact example and guidance on layout, readable labels, and arrow routing.
+The project includes a [diagram skill](.agents/skills/diagram/SKILL.md) with a compact example and guidance on layout, readable labels, and arrow routing.
 
 ## Write a drawing spec
 
