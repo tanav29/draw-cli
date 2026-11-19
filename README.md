@@ -82,7 +82,64 @@ elements:
 - Use native style fields such as `strokeColor`, `backgroundColor`, `strokeWidth`, `strokeStyle`, `fillStyle`, `roughness`, `opacity`, and `angle` (radians).
 - For images, put an Excalidraw binary file record with a data URL under its ID in top-level `files` and set that ID as the image's `fileId`.
 
-See the [complete example spec](examples/agent-loop.json).
+### Shape labels and text styling
+
+For a rectangle, ellipse, diamond, or arrow, put the text fields inside `label`. Draw creates an editable text element bound to that shape. For a heading, caption, or note, use `type: text` and put the same fields directly on the element.
+
+| Field | Values | Default and behavior |
+| --- | --- | --- |
+| `text` | String, required for a text element or a label | Newlines start new lines. Use YAML `|-` for a multiline string without a trailing blank line. An empty label creates no bound text. |
+| `fontSize` | Number, in scene pixels | `20` |
+| `fontFamily` | Numeric font ID | `5` Excalifont. Bundled alternatives are `1` Virgil, `3` Cascadia Code, `6` Nunito, `7` Lilita One, and `8` Comic Shanns. Other IDs request Arial at render time and use Nunito metrics for layout. |
+| `lineHeight` | Number, as a multiplier of `fontSize` | `1.25`. A size of 20 and a line height of 1.5 allocate 30 pixels per line. |
+| `textAlign` | `left`, `center`, `right` | Standalone text defaults to `left`, labels to `center`. Aligns lines within the text block and positions a shape label horizontally. Arrow labels stay centered on the route. |
+| `verticalAlign` | `top`, `middle`, `bottom` | Shape labels default to `middle` within the available area. Standalone text grows down from `y` (default `top`). Arrow labels stay vertically centered on the route. |
+| `strokeColor` | CSS color string | Standalone text defaults to `"#1e1e1e"`. A label inherits its shape's stroke color unless overridden. Quote hex colors in YAML. |
+
+Set `opacity` (0–100, default 100) and `angle` (radians, default 0) on the shape or standalone text element. Shape labels inherit both. Arrow labels inherit opacity and stay upright. Set font and alignment fields inside the label itself.
+
+**Sizing and wrapping.** With an explicit shape width, Draw wraps labels within the usable width, splitting long words when needed. Without a width, the shape grows to fit the longest line. The usable label area is a centered rectangle spanning the full dimensions for rectangles, about 71% of each dimension for ellipses, and 50% for diamonds, with another 5 pixels of padding per side. A specified shape height is a minimum. Arrow labels use their natural width and sit at the middle vertex or the midpoint of the middle segment.
+
+Standalone text sizes itself to its contents. Set `autoResize: false` and `width` together to wrap at that width. Draw measures the resulting lines to set the final width and height. For example, this card has a top-left label and a separate width-limited caption.
+
+```yaml
+elements:
+  - id: review
+    type: rectangle
+    x: 0
+    y: 0
+    width: 240
+    height: 90
+    backgroundColor: "#e4f3eb"
+    label:
+      text: |-
+        Editorial review
+        Due Thursday
+      fontFamily: 6
+      fontSize: 20
+      lineHeight: 1.4
+      textAlign: left
+      verticalAlign: top
+      strokeColor: "#204b40"
+  - {id: note, type: text, x: 0, y: 110, autoResize: false, width: 240, fontSize: 16, text: Copy and artwork go to production together.}
+```
+
+### Render warnings
+
+`draw render` reports layout warnings on stderr and still writes the image. Warnings identify elements by ID, including generated IDs such as `element-1` when a spec omits them. Use `--no-warnings` for intentional layering or to silence diagnostics in a pipeline.
+
+- **Text overflow** reports when a label expands a specified shape height, a character exceeds a standalone text element's wrapping width, or a saved text block exceeds its box or its shape's padded label area. Increase the affected dimension, shorten the text, or reduce `fontSize`. Ordinary line wrapping that fits is silent.
+- **Possible overlap** names pairs with intersecting bounding boxes among shapes, images, standalone text, and arrow labels. Touching edges are fine. Frames, connector paths, and labels inside their own shapes are excluded from pair checks. Rotated shapes, curved outlines, and intentionally layered objects can produce warnings even when the result looks right. Draw lists up to 20 pairs.
+
+### Worked examples
+
+| Spec | What to look at |
+| --- | --- |
+| [Publication handoff](examples/publication-handoff.yaml) | Two named frames with auto-sized bounds. Each owns its internal arrow. The labeled handoff belongs to the scene so it can cross between frames. |
+| [Cache read](examples/cache-read.yaml) | A diamond branches into hit and miss paths. The return arrow turns at a waypoint and uses a negative final y offset to enter the response from below. |
+| [Agent drawing loop](examples/agent-loop.json) | Three labeled nodes, two bound arrows, and separate monospace captions in JSON. |
+
+Run `node cli.mjs render examples/cache-read.yaml` for a preview or `node cli.mjs create cache-read.excalidraw --from examples/cache-read.yaml` to edit the scene.
 
 ## Export compatibility
 

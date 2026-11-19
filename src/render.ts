@@ -8,6 +8,7 @@ import { arrowCenter, elementBounds, extents, localBounds } from "./geometry.js"
 import type { Bounds } from "./geometry.js";
 import type { Element, Files, Point, Scene } from "./types.js";
 import { checkRenderFields } from "./scene.js";
+import { checkLayout } from "./layout.js";
 
 const rough: typeof import("roughjs").default = createRequire(import.meta.url)("roughjs");
 
@@ -17,6 +18,7 @@ interface ExportOptions {
   padding: number;
   scale: number;
   transparent: boolean;
+  warn?: (message: string) => void;
 }
 
 function escape(value: string) {
@@ -254,7 +256,7 @@ function exportBounds(element: Element) {
   };
 }
 
-export async function renderScene({ scene, format, padding, scale, transparent }: ExportOptions) {
+export async function renderScene({ scene, format, padding, scale, transparent, warn }: ExportOptions) {
   checkRenderFields(scene);
   const visible = scene.elements.filter((element) => !element.isDeleted && element.type !== "selection");
   const byId = new Map(visible.map((element) => [element.id, element]));
@@ -300,6 +302,8 @@ export async function renderScene({ scene, format, padding, scale, transparent }
   if (format === "png" && (pixelsW > 16384 || pixelsH > 16384 || pixelsW * pixelsH > 64_000_000)) {
     throw new Error(`PNG would be ${pixelsW}×${pixelsH}. Lower --scale or export SVG.`);
   }
+
+  if (warn) checkLayout(elements, byId, warn);
 
   const svg = [
     `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${format === "png" ? pixelsW : width}" height="${format === "png" ? pixelsH : height}" viewBox="${x} ${y} ${width} ${height}">`,

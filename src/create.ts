@@ -1,7 +1,7 @@
 import { randomInt, randomUUID } from "node:crypto";
 import { generateNKeysBetween } from "fractional-indexing";
 import { textWidth, wrapText } from "./fonts.js";
-import { arrowCenter, boundsOf, elementBounds, extents, rotate } from "./geometry.js";
+import { arrowCenter, boundsOf, elementBounds, extents, labelAreaFactor, rotate } from "./geometry.js";
 import type { Binding, Element, Label, Point, Scene, Skeleton, Spec } from "./types.js";
 
 function makeElement(skeleton: Skeleton): Element {
@@ -81,7 +81,7 @@ function sizeText(element: Element, maxWidth = Infinity) {
 
 function makeLabel(container: Element, label: Label, spec: Skeleton): Element {
   const arrow = container.type === "arrow";
-  const factor = container.type === "diamond" ? 0.5 : container.type === "ellipse" ? Math.SQRT1_2 : 1;
+  const factor = labelAreaFactor(container.type);
   const element = makeElement({
     type: "text",
     id: randomUUID(),
@@ -146,14 +146,25 @@ function bind(arrow: Element, target: Element, side: "start" | "end"): Binding {
   return { elementId: target.id, focus, gap };
 }
 
-export function createScene(spec: Spec): Scene {
+export function createScene(spec: Spec, warn?: (message: string) => void): Scene {
   const elements = spec.elements.map(makeElement);
   const byId = new Map(elements.map((element) => [element.id, element]));
   const labels = new Map<string, Element>();
   for (const skeleton of spec.elements) {
     const element = byId.get(skeleton.id)!;
-    if (element.type === "text") sizeText(element, element.autoResize === false ? skeleton.width : undefined);
-    else if (skeleton.label?.text) labels.set(element.id, makeLabel(element, skeleton.label, skeleton));
+    const visible = !element.isDeleted && element.opacity !== 0;
+    if (element.type === "text") {
+      const wrapWidth = element.autoResize === false ? skeleton.width : undefined;
+      sizeText(element, wrapWidth);
+      if (visible && wrapWidth !== undefined && element.text && element.width > wrapWidth + 0.01) {
+        warn?.(`Text overflow in "${element.id}": a character exceeds the specified width of ${wrapWidth}px.`);
+      }
+    } else if (skeleton.label?.text) {
+      labels.set(element.id, makeLabel(element, skeleton.label, skeleton));
+      if (visible && element.type !== "arrow" && skeleton.height !== undefined && element.height > skeleton.height) {
+        warn?.(`Text overflow in "${element.id}": increased height from ${skeleton.height}px to ${element.height}px to fit its label.`);
+      }
+    }
   }
   for (const skeleton of spec.elements) {
     const element = byId.get(skeleton.id)!;

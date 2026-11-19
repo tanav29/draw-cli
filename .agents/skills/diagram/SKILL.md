@@ -20,4 +20,6 @@ elements:
   - {type: arrow, x: 188, y: 38, points: [[0, 0], [64, 0]], start: {id: intake}, end: {id: review}}
 ```
 
-Render with `draw render drawing.yaml`. Inspect the temporary image at the returned absolute path for overlaps, wrapping, arrow direction, and contrast; revise and rerender as needed. Use `-o` to save a persistent image. For an editable scene, run `draw create drawing.excalidraw --from drawing.yaml`. Return the requested files and the YAML when useful for regeneration. See the README for additional fields.
+Render with `draw render drawing.yaml`. Read stderr for text overflow and possible overlaps, then inspect the temporary image at the returned path for wrapping, arrow direction, and contrast. Use `-o` to save a persistent image. For an editable scene, run `draw create drawing.excalidraw --from drawing.yaml`. Return the requested files and the YAML when useful for regeneration.
+
+The README's “Shape labels and text styling” table lists label fields, font IDs, defaults, and wrapping rules. See `examples/publication-handoff.yaml` for frame membership and `examples/cache-read.yaml` for labeled branches and a routed return arrow.

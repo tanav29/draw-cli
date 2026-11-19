@@ -1,0 +1,34 @@
+background: "#f8fbff"
+elements:
+  - {id: title, type: text, x: 0, y: 0, text: Serving a cached read, fontSize: 36, fontFamily: 6, strokeColor: "#19365b"}
+  - {id: request, type: rectangle, x: 0, y: 148, width: 162, height: 74, label: {text: Read request, fontFamily: 6}, backgroundColor: "#dbe9f9"}
+  - {id: cache, type: diamond, x: 252, y: 116, width: 206, height: 138, label: {text: "Cache hit?", fontFamily: 6, fontSize: 18}, backgroundColor: "#ffe5a8"}
+  - {id: respond, type: rectangle, x: 570, y: 148, width: 192, height: 74, label: {text: Return value, fontFamily: 6}, backgroundColor: "#cce7d8"}
+  - id: load
+    type: rectangle
+    x: 253
+    y: 352
+    width: 204
+    height: 82
+    backgroundColor: "#e0e6f6"
+    label:
+      text: |-
+        Read from origin
+        and fill cache
+      fontFamily: 6
+      fontSize: 19
+      lineHeight: 1.3
+
+  - {id: lookup, type: arrow, x: 170, y: 185, points: [[0, 0], [74, 0]], start: {id: request}, end: {id: cache}}
+  - {id: hit, type: arrow, x: 466, y: 185, points: [[0, 0], [96, 0]], start: {id: cache}, end: {id: respond}, label: {text: Hit, fontSize: 16}}
+  - {id: miss, type: arrow, x: 355, y: 262, points: [[0, 0], [0, 82]], start: {id: cache}, end: {id: load}, label: {text: Miss, fontSize: 16}}
+
+  # Turn at (666, 393), then enter the response from below.
+  # Every point is measured from (465, 393), including the final upward leg.
+  - id: return-loaded
+    type: arrow
+    x: 465
+    y: 393
+    points: [[0, 0], [201, 0], [201, -163]]
+    start: {id: load}
+    end: {id: respond}

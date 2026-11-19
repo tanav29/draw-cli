@@ -2,6 +2,11 @@ import type { Element, Point } from "./types.js";
 
 export type Bounds = { left: number; top: number; right: number; bottom: number };
 
+// Fraction of each dimension available to the centered rectangular label area.
+export function labelAreaFactor(type: string) {
+  return type === "diamond" ? 0.5 : type === "ellipse" ? Math.SQRT1_2 : 1;
+}
+
 export function boundsOf(points: Iterable<Point>): Bounds {
   let left = Infinity,
     top = Infinity,

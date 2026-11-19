@@ -125,6 +125,65 @@ test("render existing editor files and enforce PNG export bounds", async () => {
   assert.match(overLimit.stderr.toString(), /Lower --scale or export SVG/);
 });
 
+test("render warns about auto-growth and overlaps without changing stdout or exit status", () => {
+  const args = ["render", "-", "--format", "svg", "-o", "-"];
+  const input = JSON.stringify({ elements: [
+    { id: "review", type: "rectangle", x: 0, y: 0, width: 180, height: 32,
+      label: { text: "First line\nSecond line" }, seed: 1 },
+    { id: "footer", type: "text", x: 0, y: 45, text: "Next" },
+    { id: "narrow", type: "text", x: 300, y: 0, autoResize: false, width: 2, text: "W" },
+  ] });
+  const result = run(args, { input });
+  assert.equal(result.status, 0);
+  assert.match(result.stdout.toString(), /^<svg/);
+  const warnings = result.stderr.toString().trim().split(/\r?\n/);
+  assert.equal(warnings.length, 3);
+  assert.match(warnings[0], /Text overflow in "review".*32px to 60px/);
+  assert.match(warnings[1], /Text overflow in "narrow".*width of 2px/);
+  assert.match(warnings[2], /overlap between "review" and "footer"/);
+  const quiet = run([...args, "--no-warnings"], { input });
+  assert.equal(quiet.status, 0);
+  assert.equal(quiet.stderr.length, 0);
+  assert.deepEqual(quiet.stdout, result.stdout);
+});
+
+test("check saved text geometry and ignore ordinary bindings, touching edges, and hidden elements", () => {
+  const box = { id: "box", type: "rectangle", x: 0, y: 0, width: 100, height: 80 };
+  const elements = [
+    box,
+    { ...box, id: "neighbor", x: 100 },
+    { ...box, id: "deleted", isDeleted: true },
+    { ...box, id: "invisible", opacity: 0 },
+    { ...box, type: "frame", id: "section" },
+    { ...box, type: "arrow", id: "edge", points: [[0, 0], [100, 80]], endBinding: { elementId: "box" } },
+    { id: "label", type: "text", containerId: "box", x: 70, y: 25, width: 40, height: 25, text: "OK" },
+    { id: "caption", type: "text", x: 250, y: 0, width: 8, height: 12, text: "Long caption" },
+  ];
+  const input = JSON.stringify({ type: "excalidraw", elements });
+  const result = run(["render", "-", "-o", "-"], { input });
+  assert.equal(result.status, 0);
+  assert.equal(result.stdout.toString("ascii", 1, 4), "PNG");
+  const warnings = result.stderr.toString().trim().split(/\r?\n/);
+  assert.equal(warnings.length, 2);
+  assert.match(warnings[0], /label of "box".*padded label area/);
+  assert.match(warnings[1], /"caption".*exceed the text box/);
+});
+
+test("worked YAML examples render without layout warnings directly and as saved scenes", () => {
+  for (const name of ["publication-handoff", "cache-read"]) {
+    const path = fileURLToPath(new URL(`../../examples/${name}.yaml`, import.meta.url));
+    const native = success(["create", "-", "--from", path]);
+    for (const result of [
+      run(["render", path, "-o", "-", "--format", "svg"]),
+      run(["render", "-", "-o", "-", "--format", "svg"], { input: native }),
+    ]) {
+      assert.equal(result.status, 0, result.stderr.toString());
+      assert.equal(result.stderr.toString(), "");
+      assert.match(result.stdout.toString(), /^<svg/);
+    }
+  }
+});
+
 test("encode background, transparency and a cropped embedded image into actual pixels", () => {
   const scene = { type: "excalidraw", appState: { viewBackgroundColor: "#123456" }, elements: [] };
   const args = ["render", "-", "-o", "-", "--padding", "0"];

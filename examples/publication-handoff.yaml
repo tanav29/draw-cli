@@ -1,0 +1,24 @@
+background: "#fffdf8"
+elements:
+  - {id: title, type: text, x: 0, y: 0, text: From draft to release, fontFamily: 6, fontSize: 36, strokeColor: "#263c39"}
+
+  # Each frame takes its bounds from its children. Coordinates stay in scene space.
+  - {id: editorial, type: frame, name: Editorial, children: [draft, review, submit]}
+  - {id: draft, type: rectangle, x: 12, y: 110, width: 200, height: 80, backgroundColor: "#f8e5b8", label: {text: Draft the story, fontFamily: 6}}
+  - {id: review, type: rectangle, x: 348, y: 110, width: 200, height: 80, backgroundColor: "#f8e5b8", label: {text: Approve the copy, fontFamily: 6}}
+  - {id: submit, type: arrow, x: 220, y: 150, points: [[0, 0], [120, 0]], start: {id: draft}, end: {id: review}}
+
+  - {id: production, type: frame, name: Production, children: [proof, release, publish]}
+  - {id: proof, type: rectangle, x: 348, y: 350, width: 200, height: 80, backgroundColor: "#cbe8de", label: {text: Check the proof, fontFamily: 6}}
+  - {id: release, type: rectangle, x: 12, y: 350, width: 200, height: 80, backgroundColor: "#cbe8de", label: {text: Publish the issue, fontFamily: 6}}
+  - {id: publish, type: arrow, x: 340, y: 390, points: [[0, 0], [-120, 0]], start: {id: proof}, end: {id: release}}
+
+  # Keep the cross-section handoff outside both children lists so neither frame clips it.
+  - id: handoff
+    type: arrow
+    x: 448
+    y: 198
+    points: [[0, 0], [0, 144]]
+    start: {id: review}
+    end: {id: proof}
+    label: {text: Approved copy, fontSize: 16, fontFamily: 6, strokeColor: "#326858"}

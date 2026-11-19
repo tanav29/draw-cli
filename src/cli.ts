@@ -9,7 +9,7 @@ import { describeScene, normalizeSpec, validateScene } from "./scene.js";
 
 const renderUsage = `draw render <spec.yaml|spec.json|scene.excalidraw|-> [-o <image.png|image.svg|->]
               [--from-format <json|yaml>] [--format <png|svg>]
-              [--padding <px>] [--scale <number>] [--transparent] [--force]`;
+              [--padding <px>] [--scale <number>] [--transparent] [--no-warnings] [--force]`;
 
 const renderHelp = `Usage
   ${renderUsage}
@@ -21,6 +21,7 @@ Write a drawing spec as JSON or YAML, or use a scene saved by Excalidraw.
 
 Pass --force to replace an existing image. Use - for stdin or -o - for stdout.
 Stdin accepts YAML or JSON. For SVG on stdout, add --format svg.
+Layout warnings go to stderr. Use --no-warnings to silence them.
 `;
 
 const help = `Usage
@@ -63,6 +64,7 @@ const commands = {
     padding: { type: "string", default: "24" },
     scale: { type: "string" },
     transparent: { type: "boolean" },
+    "no-warnings": { type: "boolean" },
     force,
   },
   source: { format: { ...format, default: "text" } },
@@ -132,10 +134,10 @@ async function readData(input: string, inputFormat = "json") {
   }
 }
 
-async function sceneFromSpec(data: unknown) {
+async function sceneFromSpec(data: unknown, warn?: (message: string) => void) {
   const spec = normalizeSpec(data);
   const { createScene } = await import("./create.js");
-  return createScene(spec);
+  return createScene(spec, warn);
 }
 
 function numberOption(value: string, key: string, minimum: number, maximum: number) {
@@ -166,6 +168,7 @@ interface Flags {
   scale?: string;
   padding?: string;
   transparent?: boolean;
+  "no-warnings"?: boolean;
 }
 
 async function main([command, ...args]: string[]) {
@@ -245,7 +248,8 @@ async function main([command, ...args]: string[]) {
   const nativeScene =
     extname(input).toLowerCase() === ".excalidraw" ||
     (typeof data === "object" && data !== null && "type" in data && data.type === "excalidraw");
-  const scene = nativeScene ? validateScene(data) : await sceneFromSpec(data);
+  const warn = values["no-warnings"] ? undefined : (message: string) => console.error(`draw: warning: ${message}`);
+  const scene = nativeScene ? validateScene(data) : await sceneFromSpec(data, warn);
   const { renderScene } = await import("./render.js");
   const image = await renderScene({
     scene,
@@ -253,6 +257,7 @@ async function main([command, ...args]: string[]) {
     padding,
     scale,
     transparent: values.transparent ?? false,
+    warn,
   });
   if (values.output) {
     await emit(values.output, image, values.force);
