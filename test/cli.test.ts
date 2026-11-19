@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { isAbsolute, join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { inflateSync } from "node:zlib";
@@ -45,18 +45,26 @@ function singlePixel(png: Buffer) {
   return [...inflateSync(Buffer.concat(chunks)).subarray(1)];
 }
 
-test("render a spec directly to its sibling PNG or a named SVG", async () => {
+test("render to a unique temporary image or an explicit output", async () => {
   const cwd = await mkdtemp(join(tmpdir(), "draw-cli-"));
+  const temporary: string[] = [];
   try {
     success(["init", "drawing.json"], { cwd });
-    const result = run(["render", "drawing.json"], { cwd });
-    assert.equal(result.status, 0, result.stderr.toString());
-    assert.equal(result.stdout.length, 0);
-    assert.equal(result.stderr.toString().trim(), join(cwd, "drawing.png"));
-    const png = await readFile(join(cwd, "drawing.png"));
-    assert.equal(png.toString("ascii", 1, 4), "PNG");
-    assert.deepEqual((await readdir(cwd)).sort(), ["drawing.json", "drawing.png"]);
-    const duplicate = run(["render", "drawing.json"], { cwd });
+    for (const args of [["render", "drawing.json"], ["render", "drawing.json"], ["render", "drawing.json", "--format", "svg"]]) {
+      const result = run(args, { cwd });
+      assert.equal(result.status, 0, result.stderr.toString());
+      const path = result.stdout.toString().trim();
+      temporary.push(path);
+      assert.ok(isAbsolute(path));
+      assert.equal(result.stderr.length, 0);
+      const contents = await readFile(path);
+      if (path.endsWith(".svg")) assert.match(contents.toString(), /^<svg[\s>]/);
+      else assert.equal(contents.toString("ascii", 1, 4), "PNG");
+    }
+    assert.notEqual(temporary[0], temporary[1]);
+    assert.deepEqual(await readdir(cwd), ["drawing.json"]);
+    success(["render", "drawing.json", "-o", "drawing.png"], { cwd });
+    const duplicate = run(["render", "drawing.json", "-o", "drawing.png"], { cwd });
     assert.equal(duplicate.status, 1);
     assert.match(duplicate.stderr.toString(), /--force/);
 
@@ -72,6 +80,7 @@ test("render a spec directly to its sibling PNG or a named SVG", async () => {
     const native = success(["render", "native.json", "--padding", "0", "-o", "-"], { cwd });
     assert.deepEqual(singlePixel(native), [0xab, 0xcd, 0xef, 255]);
   } finally {
+    await Promise.all(temporary.map((path) => rm(path, { force: true })));
     await rm(cwd, { recursive: true, force: true });
   }
 });
@@ -89,8 +98,8 @@ test("render specs from stdin and report input errors before writing an image", 
 });
 
 test("render existing editor files and enforce PNG export bounds", async () => {
-  const fixture = new URL("../../examples/agent-loop.excalidraw", import.meta.url);
-  const input = await readFile(fixture);
+  const fixture = await readFile(new URL("../../examples/agent-loop.json", import.meta.url));
+  const input = success(["create", "-", "--from", "-"], { input: fixture });
   const svg = success(["render", "-", "-o", "-", "--format", "svg"], { input }).toString();
   assert.match(svg, /The agent drawing loop/);
   assert.match(svg, /fill="#fbf9f4"/);
@@ -208,11 +217,11 @@ test("protect existing files and report invalid arrow references", async () => {
   const cwd = await mkdtemp(join(tmpdir(), "draw-cli-"));
   try {
     success(["init"], { cwd });
-    const before = await readFile(join(cwd, "drawing.json"));
+    const before = await readFile(join(cwd, "drawing.yaml"));
     const duplicate = run(["init"], { cwd });
     assert.equal(duplicate.status, 1);
     assert.match(duplicate.stderr.toString(), /already exists/);
-    assert.deepEqual(await readFile(join(cwd, "drawing.json")), before);
+    assert.deepEqual(await readFile(join(cwd, "drawing.yaml")), before);
     success(["init", "--force"], { cwd });
 
     const input = JSON.stringify({ elements: [{ type: "arrow", x: 0, y: 0, end: { id: "missing" } }] });
@@ -228,7 +237,7 @@ test("protect existing files and report invalid arrow references", async () => {
 test("convert YAML and create the same drawing from a file or stdin", async () => {
   const cwd = await mkdtemp(join(tmpdir(), "draw-cli-"));
   try {
-    success(["init"], { cwd });
+    success(["init", "drawing.json"], { cwd });
     success(["init", "drawing.yml"], { cwd });
     const json = await readFile(join(cwd, "drawing.json"));
     const yaml = await readFile(join(cwd, "drawing.yml"));
@@ -237,7 +246,7 @@ test("convert YAML and create the same drawing from a file or stdin", async () =
     assert.deepEqual(JSON.parse(converted.toString()), JSON.parse(json.toString()));
 
     const fromFile = success(["create", "-", "--from", "drawing.yml"], { cwd });
-    const fromStdin = success(["create", "-", "--from", "-", "--from-format", "yaml"], { cwd, input: yaml });
+    const fromStdin = success(["create", "-", "--from", "-"], { cwd, input: yaml });
     assert.deepEqual(
       success(["source", "-"], { input: fromFile }),
       success(["source", "-"], { input: fromStdin }),

@@ -1,11 +1,13 @@
+import { randomUUID } from "node:crypto";
+import { tmpdir } from "node:os";
 import { readFile, writeFile } from "node:fs/promises";
-import { extname, parse, resolve } from "node:path";
+import { extname, resolve } from "node:path";
 import { text } from "node:stream/consumers";
 import { parseArgs } from "node:util";
 import type { ParseArgsConfig } from "node:util";
 import { describeScene, normalizeSpec, validateScene } from "./scene.js";
 
-const renderUsage = `draw render <spec.json|spec.yaml|scene.excalidraw|-> [-o <image.png|image.svg|->]
+const renderUsage = `draw render <spec.yaml|spec.json|scene.excalidraw|-> [-o <image.png|image.svg|->]
               [--from-format <json|yaml>] [--format <png|svg>]
               [--padding <px>] [--scale <number>] [--transparent] [--force]`;
 
@@ -13,30 +15,34 @@ const renderHelp = `Usage
   ${renderUsage}
 
 Write a drawing spec as JSON or YAML, or use a scene saved by Excalidraw.
-  draw render drawing.json                  Save drawing.png beside the spec
-  draw render drawing.yaml -o preview.svg   Choose SVG by its output extension
+  draw render drawing.yaml                  Save a temporary PNG and print its path
+  draw render drawing.json -o preview.svg   Choose SVG by its output extension
   draw render drawing.excalidraw --scale 2  Save a double-resolution PNG
 
 Pass --force to replace an existing image. Use - for stdin or -o - for stdout.
-For YAML on stdin, add --from-format yaml. For SVG on stdout, add --format svg.
+Stdin accepts YAML or JSON. For SVG on stdout, add --format svg.
 `;
 
 const help = `Usage
   ${renderUsage}
-  draw init [spec.json|spec.yaml|->] [--force]
-  draw create <scene.excalidraw|-> [--from <spec.json|spec.yaml|->]
+  draw init [spec.yaml|spec.json|->] [--force]
+  Write an editable example drawing spec (default: drawing.yaml).
+
+  draw create <scene.excalidraw|-> [--from <spec.yaml|spec.json|->]
               [--from-format <json|yaml>] [--force]
+  Convert a JSON or YAML spec to an editable Excalidraw scene, or create an empty scene.
+
   draw yaml-to-json <spec.yaml|-> [-o <spec.json|->] [--force]
+  Convert one YAML document to JSON (stdout by default).
+
   draw source <scene.excalidraw|-> [--format <text|json>]
 
-init    Write an editable example drawing spec (default: drawing.json).
-create  Convert a JSON or YAML spec to an editable Excalidraw scene, or create an empty scene.
-yaml-to-json  Convert one YAML document to JSON (stdout by default).
 render  Render a spec or saved scene directly to PNG (default) or SVG.
 source  Print a text summary or the original scene JSON.
 
-Use "-" for stdin or stdout where shown. File paths are reported on stderr.
-Use --from-format yaml for YAML input on stdin.
+Use "-" for stdin or stdout where shown. Explicit output paths are reported on stderr.
+Render without -o prints the temporary image path on stdout.
+Spec input on stdin defaults to YAML (which also accepts JSON); source reads scene JSON.
 `;
 
 const force = { type: "boolean" } as const;
@@ -74,7 +80,7 @@ async function emit(output: string, contents: string | Buffer, overwrite?: boole
 }
 
 function specFormat(path: string) {
-  return [".yaml", ".yml"].includes(extname(path).toLowerCase()) ? "yaml" : "json";
+  return path === "-" || [".yaml", ".yml"].includes(extname(path).toLowerCase()) ? "yaml" : "json";
 }
 
 async function exampleYaml(example: string) {
@@ -182,7 +188,7 @@ async function main([command, ...args]: string[]) {
   }
 
   if (command === "init") {
-    const output = input ?? "drawing.json";
+    const output = input ?? "drawing.yaml";
     const example = await readFile(new URL("../../examples/agent-loop.json", import.meta.url), "utf8");
     const contents = specFormat(output) === "yaml" ? await exampleYaml(example) : example;
     await emit(output, contents, values.force);
@@ -211,7 +217,7 @@ async function main([command, ...args]: string[]) {
   if (command === "source") {
     if (!["text", "json"].includes(values.format ?? "text"))
       throw new Error("source --format must be text or json.");
-    const { raw, data } = await readData(input);
+    const { raw, data } = await readData(input, "json");
     const summary = validateScene(data);
     process.stdout.write(values.format === "json" ? raw : describeScene(summary));
     return;
@@ -225,9 +231,7 @@ async function main([command, ...args]: string[]) {
   }
   const scale = numberOption(values.scale ?? "1", "scale", 0.01, 16);
   const padding = numberOption(values.padding ?? "24", "padding", 0, 4096);
-  const { dir, name } = parse(input === "-" ? "drawing.excalidraw" : input);
-  const output = values.output ?? resolve(dir, `${name}.${imageFormat}`);
-  checkPaths(input, output);
+  if (values.output) checkPaths(input, values.output);
   const { data } = await readData(input, values["from-format"] ?? specFormat(input));
   const nativeScene =
     extname(input).toLowerCase() === ".excalidraw" ||
@@ -241,7 +245,13 @@ async function main([command, ...args]: string[]) {
     scale,
     transparent: values.transparent ?? false,
   });
-  await emit(output, image, values.force);
+  if (values.output) {
+    await emit(values.output, image, values.force);
+  } else {
+    const output = resolve(tmpdir(), `draw-${randomUUID()}.${imageFormat}`);
+    await writeFile(output, image, { flag: "wx" });
+    process.stdout.write(`${output}\n`);
+  }
 }
 
 try {
