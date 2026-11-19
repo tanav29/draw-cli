@@ -2,6 +2,20 @@
 
 Create editable Excalidraw drawings from JSON or YAML and export them to SVG or PNG. The TypeScript CLI generates SVG directly in Node.js and loads resvg for PNG export. Both run offline.
 
+## Performance
+
+Saving the included example to a new file took **88 ms for an editable scene**, **95 ms for SVG**, and **124 ms for PNG**. These are median times from seven fresh CLI processes on Windows x64 with Node.js 24.21.0, measured from launch through file write and process exit. Scene creation used the [example spec](examples/agent-loop.json). Both exports used the [existing scene](examples/agent-loop.excalidraw) at default settings.
+
+The before-and-after benchmark used the same inputs and measured seven fresh processes per command, with both versions writing to stdout.
+
+| Command | Chromium renderer | TypeScript renderer | Time saved per command | Speedup |
+| --- | ---: | ---: | ---: | ---: |
+| Create editable scene | 1,196 ms | 74 ms | 1,122 ms | 16.2× |
+| Export SVG | 1,193 ms | 77 ms | 1,116 ms | 15.5× |
+| Export PNG | 1,030 ms | 95 ms | 935 ms | 10.8× |
+
+On Windows x64, the packed CLI and its production dependencies occupy **6.5 MB** with PNG support, or **1.9 MB** with the native PNG binary omitted. The previous version used **239 MB** for dependencies alone and required a separate Chromium download. Source checkouts also install the TypeScript compiler for development.
+
 ## Setup
 
 Requires Node.js 20.19 or newer. From the project directory, run
