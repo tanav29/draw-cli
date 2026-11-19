@@ -5,7 +5,7 @@ description: Author compact YAML or JSON specs for Draw CLI, create editable Exc
 
 # Draw diagrams
 
-Write the spec as the editable source. Use YAML for short handwritten specs and JSON when a caller needs structured JSON. Both take the same fields. Run the commands below from the Draw CLI project directory, or use `draw` if the executable is on PATH.
+Write `diagram.json` as the source for an agent-authored drawing. YAML accepts the same fields and works well for short handwritten specs. Use `.excalidraw` for a native scene that someone will open in the Excalidraw editor. Run the commands below from the Draw CLI project directory, or use `draw` if the executable is on PATH.
 
 ## Build the spec
 
@@ -27,11 +27,11 @@ elements:
 ## Render and check
 
 ```sh
-node cli.mjs create diagram.excalidraw --from diagram.yaml
-node cli.mjs render diagram.excalidraw --scale 2
-node cli.mjs source diagram.excalidraw
+node cli.mjs render diagram.json --scale 2
 ```
 
-Open the PNG with an image-reading tool. Check clipped or awkwardly wrapped text, crosses or overlaps, arrow direction, and contrast. Adjust the spec and rerun `create` and `render` with `--force` for that draft. Use the text summary to confirm labels and connections. Return the preview and editable scene, plus the authored spec if the user needs to regenerate it.
+This writes `diagram.png` beside the spec. For the YAML example above, use `diagram.yaml` as the input. Open the PNG with an image-reading tool and check label wrapping, overlaps, arrow direction, and contrast. Adjust the spec and rerun `render` with `--force` to replace the preview.
+
+When an editor-ready file is requested, run `node cli.mjs create diagram.excalidraw --from diagram.json`. Use `node cli.mjs source diagram.excalidraw` to inspect labels and connections. Return the requested outputs and include the authored spec when the user needs to regenerate the drawing.
 
 Use `node cli.mjs yaml-to-json diagram.yaml -o diagram.json` when JSON spec output is requested. Use `source --format json` on the scene when the full native Excalidraw JSON is requested. See the project README for setup and additional shape fields.

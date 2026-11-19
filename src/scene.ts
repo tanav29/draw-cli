@@ -60,7 +60,7 @@ export function checkRenderFields(scene: Scene) {
 
 export function validateScene(scene: unknown): Scene {
   if (!isObject(scene) || scene.type !== "excalidraw" || !Array.isArray(scene.elements)) {
-    throw new Error("Expected an Excalidraw scene. Use create to convert a JSON drawing spec first.");
+    throw new Error('Expected a native scene with "type": "excalidraw" and an "elements" array.');
   }
   if (scene.elements.some((element) => !isObject(element) || typeof element.type !== "string")) {
     throw new Error("The scene contains an invalid element.");
@@ -70,7 +70,7 @@ export function validateScene(scene: unknown): Scene {
 
 export function normalizeSpec(spec: unknown): Spec {
   if (!isObject(spec) || !Array.isArray(spec.elements)) {
-    throw new Error('Expected a JSON drawing spec with an "elements" array.');
+    throw new Error('Expected a drawing spec with an "elements" array.');
   }
   const background = spec.background ?? "#ffffff";
   if (typeof background !== "string" || !background.trim()) {

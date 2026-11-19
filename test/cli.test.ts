@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -44,6 +44,49 @@ function singlePixel(png: Buffer) {
   }
   return [...inflateSync(Buffer.concat(chunks)).subarray(1)];
 }
+
+test("render a spec directly to its sibling PNG or a named SVG", async () => {
+  const cwd = await mkdtemp(join(tmpdir(), "draw-cli-"));
+  try {
+    success(["init", "drawing.json"], { cwd });
+    const result = run(["render", "drawing.json"], { cwd });
+    assert.equal(result.status, 0, result.stderr.toString());
+    assert.equal(result.stdout.length, 0);
+    assert.equal(result.stderr.toString().trim(), join(cwd, "drawing.png"));
+    const png = await readFile(join(cwd, "drawing.png"));
+    assert.equal(png.toString("ascii", 1, 4), "PNG");
+    assert.deepEqual((await readdir(cwd)).sort(), ["drawing.json", "drawing.png"]);
+    const duplicate = run(["render", "drawing.json"], { cwd });
+    assert.equal(duplicate.status, 1);
+    assert.match(duplicate.stderr.toString(), /--force/);
+
+    success(["init", "drawing.yml"], { cwd });
+    success(["render", "drawing.yml", "-o", "preview.svg"], { cwd });
+    assert.match(await readFile(join(cwd, "preview.svg"), "utf8"), /Write a spec/);
+
+    // A native scene can also be saved as .json. Preserve its appState on export.
+    await writeFile(
+      join(cwd, "native.json"),
+      JSON.stringify({ type: "excalidraw", elements: [], appState: { viewBackgroundColor: "#abcdef" } }),
+    );
+    const native = success(["render", "native.json", "--padding", "0", "-o", "-"], { cwd });
+    assert.deepEqual(singlePixel(native), [0xab, 0xcd, 0xef, 255]);
+  } finally {
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
+test("render specs from stdin and report input errors before writing an image", () => {
+  const args = ["render", "-", "-o", "-", "--padding", "0"];
+  const json = success(args, { input: '{"background":"#123456","elements":[]}' });
+  const yaml = success([...args, "--from-format", "yaml"], { input: 'background: "#123456"\nelements: []' });
+  assert.deepEqual(singlePixel(json), [0x12, 0x34, 0x56, 255]);
+  assert.deepEqual(yaml, json);
+  const invalid = run(args, { input: '{"elements":[{"type":"arrow","x":0,"y":0,"end":{"id":"missing"}}]}' });
+  assert.equal(invalid.status, 1);
+  assert.equal(invalid.stdout.length, 0);
+  assert.match(invalid.stderr.toString(), /end must reference/);
+});
 
 test("render existing editor files and enforce PNG export bounds", async () => {
   const fixture = new URL("../../examples/agent-loop.excalidraw", import.meta.url);

@@ -5,20 +5,34 @@ import { parseArgs } from "node:util";
 import type { ParseArgsConfig } from "node:util";
 import { describeScene, normalizeSpec, validateScene } from "./scene.js";
 
+const renderUsage = `draw render <spec.json|spec.yaml|scene.excalidraw|-> [-o <image.png|image.svg|->]
+              [--from-format <json|yaml>] [--format <png|svg>]
+              [--padding <px>] [--scale <number>] [--transparent] [--force]`;
+
+const renderHelp = `Usage
+  ${renderUsage}
+
+Write a drawing spec as JSON or YAML, or use a scene saved by Excalidraw.
+  draw render drawing.json                  Save drawing.png beside the spec
+  draw render drawing.yaml -o preview.svg   Choose SVG by its output extension
+  draw render drawing.excalidraw --scale 2  Save a double-resolution PNG
+
+Pass --force to replace an existing image. Use - for stdin or -o - for stdout.
+For YAML on stdin, add --from-format yaml. For SVG on stdout, add --format svg.
+`;
+
 const help = `Usage
+  ${renderUsage}
   draw init [spec.json|spec.yaml|->] [--force]
   draw create <scene.excalidraw|-> [--from <spec.json|spec.yaml|->]
               [--from-format <json|yaml>] [--force]
   draw yaml-to-json <spec.yaml|-> [-o <spec.json|->] [--force]
-  draw render <scene.excalidraw|-> [-o <image.png|image.svg|->]
-              [--format <png|svg>] [--padding <px>] [--scale <number>]
-              [--transparent] [--force]
   draw source <scene.excalidraw|-> [--format <text|json>]
 
 init    Write an editable example drawing spec (default: drawing.json).
 create  Convert a JSON or YAML spec to an editable Excalidraw scene, or create an empty scene.
 yaml-to-json  Convert one YAML document to JSON (stdout by default).
-render  Export a cropped PNG or SVG. PNG is the default. Use --scale for PNG density.
+render  Render a spec or saved scene directly to PNG (default) or SVG.
 source  Print a text summary or the original scene JSON.
 
 Use "-" for stdin or stdout where shown. File paths are reported on stderr.
@@ -34,6 +48,7 @@ const commands = {
   "yaml-to-json": { output: outputPath, force },
   render: {
     output: outputPath,
+    "from-format": format,
     format,
     padding: { type: "string", default: "24" },
     scale: { type: "string" },
@@ -71,6 +86,7 @@ async function exampleYaml(example: string) {
 }
 
 async function readData(input: string, inputFormat = "json") {
+  if (inputFormat !== "json" && inputFormat !== "yaml") throw new Error("--from-format must be json or yaml.");
   const raw = input === "-" ? await text(process.stdin) : await readFile(input, "utf8");
   const contents = raw.replace(/^\uFEFF/, "");
   try {
@@ -106,6 +122,12 @@ async function readData(input: string, inputFormat = "json") {
   }
 }
 
+async function sceneFromSpec(data: unknown) {
+  const spec = normalizeSpec(data);
+  const { createScene } = await import("./create.js");
+  return createScene(spec);
+}
+
 function numberOption(value: string, key: string, minimum: number, maximum: number) {
   const number = Number(value);
   if (!value.trim() || !Number.isFinite(number) || number < minimum || number > maximum) {
@@ -138,7 +160,7 @@ interface Flags {
 
 async function main([command, ...args]: string[]) {
   if (!command || ["help", "--help", "-h"].includes(command)) {
-    process.stdout.write(help);
+    process.stdout.write(command === "help" && args[0] === "render" ? renderHelp : help);
     return;
   }
   if (!Object.hasOwn(commands, command)) throw new Error(`Unknown command "${command}". See draw --help.`);
@@ -149,13 +171,13 @@ async function main([command, ...args]: string[]) {
   });
   const values = parsed as Flags;
   if (values.help) {
-    process.stdout.write(help);
+    process.stdout.write(command === "render" ? renderHelp : help);
     return;
   }
   const [input] = positionals;
   if (positionals.length > 1 || (!input && command !== "init")) {
     throw new Error(
-      `draw ${command} expects ${command === "init" ? "at most" : "exactly"} one path. See draw --help.`,
+      `draw ${command} expects ${command === "init" ? "at most" : "exactly"} one path. See draw ${command} --help.`,
     );
   }
 
@@ -178,14 +200,11 @@ async function main([command, ...args]: string[]) {
   if (command === "create") {
     const from = values.from;
     const inputFormat = values["from-format"] ?? specFormat(from ?? "-");
-    if (!["json", "yaml"].includes(inputFormat)) throw new Error("--from-format must be json or yaml.");
     if (!from && values["from-format"]) throw new Error("--from-format requires --from.");
     if (from) checkPaths(from, input);
     const data = from ? (await readData(from, inputFormat)).data : { elements: [] };
-    const spec = normalizeSpec(data);
-    const { createScene } = await import("./create.js");
-    const scene = JSON.stringify(createScene(spec), null, 2);
-    await emit(input, scene + "\n", values.force);
+    const scene = await sceneFromSpec(data);
+    await emit(input, JSON.stringify(scene, null, 2) + "\n", values.force);
     return;
   }
 
@@ -209,7 +228,11 @@ async function main([command, ...args]: string[]) {
   const { dir, name } = parse(input === "-" ? "drawing.excalidraw" : input);
   const output = values.output ?? resolve(dir, `${name}.${imageFormat}`);
   checkPaths(input, output);
-  const scene = validateScene((await readData(input)).data);
+  const { data } = await readData(input, values["from-format"] ?? specFormat(input));
+  const nativeScene =
+    extname(input).toLowerCase() === ".excalidraw" ||
+    (typeof data === "object" && data !== null && "type" in data && data.type === "excalidraw");
+  const scene = nativeScene ? validateScene(data) : await sceneFromSpec(data);
   const { renderScene } = await import("./render.js");
   const image = await renderScene({
     scene,
