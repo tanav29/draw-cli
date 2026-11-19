@@ -4,7 +4,7 @@ Create editable Excalidraw drawings from YAML or JSON and export them to SVG or 
 
 ## Run without installing
 
-Requires Node.js 20.19 or newer. Run `npx draw-cli --help` or `bunx draw-cli --help`. Use `npx draw-cli skill` (or `bunx draw-cli skill`) to print the agent skill instructions. Install globally with `npm install -g draw-cli` to use the `draw` command directly.
+Requires Node.js 20.19 or newer. Run `npx @10xdevs/draw --help` or `bunx @10xdevs/draw --help`. Use `npx @10xdevs/draw skill` (or `bunx @10xdevs/draw skill`) to print the agent skill instructions. Install globally with `npm install -g @10xdevs/draw` to use the `draw` command directly.
 
 ## Setup & build
 

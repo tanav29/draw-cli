@@ -5,7 +5,7 @@ description: Create editable Excalidraw diagrams from compact YAML specs with Dr
 
 # Draw diagrams
 
-Write `drawing.yaml` for the user's diagram. Use `draw` on PATH, or replace `draw` with `npx draw-cli` or `bunx draw-cli`.
+Write `drawing.yaml` for the user's diagram. Use `draw` on PATH, or replace `draw` with `npx @10xdevs/draw` or `bunx @10xdevs/draw`.
 
 - Choose the diagram structure and concise labels to match the request. Use a consistent grid, clear hierarchy, readable colors, and enough space for text and arrows.
 - Put elements in stacking order under `elements`; use stable IDs. Set `x`, `y`, `width`, and `height` for nodes. Use `label: {text: ...}` for shape labels and `type: text` for headings or notes.
